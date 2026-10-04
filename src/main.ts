@@ -21,7 +21,7 @@ import { loadImage, otsu, traceImage } from './trace';
 maplibregl.setWorkerUrl(workerUrl);
 
 type Step = 'draw' | 'place';
-type Source = 'text' | 'image' | 'hand';
+type Source = 'text' | 'image' | 'hand' | 'map';
 
 const $ = <T extends HTMLElement = HTMLElement>(sel: string) => document.querySelector(sel) as T;
 const $$ = <T extends HTMLElement = HTMLElement>(sel: string) => [...document.querySelectorAll(sel)] as T[];
@@ -38,6 +38,8 @@ const state = {
   text: 'RUN',
   /** Tracé brut par source, avant normalisation. */
   raw: { text: [] as Pt[], image: [] as Pt[], hand: [] as Pt[] },
+  /** Traits dessinés directement sur la carte, en coordonnées géographiques. */
+  sketch: [] as LngLat[][],
   /** Forme normalisée posée sur la carte. */
   shape: null as Pt[] | null,
   placement: null as Placement | null,
@@ -118,16 +120,19 @@ function setData(id: string, data: GeoJSON.Feature | GeoJSON.FeatureCollection) 
 }
 
 map.on('style.load', () => {
-  for (const id of ['design', 'route', 'start']) map.addSource(id, { type: 'geojson', data: empty });
+  for (const id of ['design', 'route', 'start', 'sketch', 'sketch-links']) map.addSource(id, { type: 'geojson', data: empty });
   const round = { 'line-join': 'round', 'line-cap': 'round' } as const;
   map.addLayer({ id: 'route-casing', type: 'line', source: 'route', layout: round, paint: { 'line-color': '#fff', 'line-width': 9, 'line-opacity': 0.85 } });
   map.addLayer({ id: 'design', type: 'line', source: 'design', layout: round, paint: { 'line-color': '#ff5a1f', 'line-width': 5 } });
   map.addLayer({ id: 'route', type: 'line', source: 'route', layout: round, paint: { 'line-color': '#ff5a1f', 'line-width': 5 } });
   map.addLayer({ id: 'start', type: 'circle', source: 'start', paint: { 'circle-radius': 7, 'circle-color': '#fff', 'circle-stroke-color': '#ff5a1f', 'circle-stroke-width': 4 } });
-  // Zone de saisie large et invisible : attraper le dessin sans viser au pixel près.
+  map.addLayer({ id: 'sketch-links', type: 'line', source: 'sketch-links', layout: round, paint: { 'line-color': '#ff5a1f', 'line-width': 2.5, 'line-opacity': 0.6, 'line-dasharray': [2, 2] } });
+  map.addLayer({ id: 'sketch', type: 'line', source: 'sketch', layout: round, paint: { 'line-color': '#ff5a1f', 'line-width': 5 } });
   mapReady = true;
+  // Zone de saisie large et invisible : attraper le dessin sans viser au pixel près.
   map.addLayer({ id: 'design-hit', type: 'line', source: 'design', layout: round, paint: { 'line-color': '#000', 'line-opacity': 0, 'line-width': 30 } });
   renderMap();
+  renderSketch();
 });
 
 /** Marges pour cadrer la carte sans que la feuille ne masque le dessin. */
@@ -167,10 +172,13 @@ function setStep(step: Step) {
   for (const tab of $$('.steps button')) tab.setAttribute('aria-selected', String(tab.dataset.step === step));
   for (const panel of $$('[data-panel]')) panel.hidden = panel.dataset.panel !== step;
   ($('.steps [data-step="place"]') as HTMLButtonElement).disabled = !state.shape;
-  sheet.expand(true);
+  sheet.expand(!(step === 'draw' && state.source === 'map' && narrow()));
   renderMap();
+  renderSketch();
   if (step === 'place' && !state.route && !aligning) scheduleSnap(0);
 }
+
+const narrow = () => !matchMedia('(min-width: 760px)').matches;
 
 for (const tab of $$<HTMLButtonElement>('.steps button')) {
   tab.addEventListener('click', () => {
@@ -186,13 +194,14 @@ const previewStart = $('#preview-start') as unknown as SVGCircleElement;
 const placeBtn = $<HTMLButtonElement>('#place-btn');
 
 function currentRaw(): Pt[] {
-  return state.raw[state.source];
+  return state.source === 'map' ? sketchToShape()?.shape ?? [] : state.raw[state.source];
 }
 
 function renderPreview() {
   const shape = normalize(currentRaw());
-  $('#preview').hidden = state.source === 'hand';
+  $('#preview').hidden = state.source === 'hand' || state.source === 'map';
   placeBtn.disabled = shape.length < 2;
+  placeBtn.textContent = state.source === 'map' ? 'Valider le dessin' : 'Poser sur la carte';
   if (shape.length < 2) {
     previewPath.setAttribute('d', '');
     previewStart.setAttribute('r', '0');
@@ -210,7 +219,10 @@ function setSource(source: Source) {
   for (const p of $$('[data-source-panel]')) p.hidden = p.dataset.sourcePanel !== source;
   if (source === 'hand') sizePad();
   renderPreview();
-  sheet.settle();
+  renderSketch();
+  // Sur téléphone, on libère la carte pour dessiner dessus.
+  if (source === 'map' && narrow()) sheet.expand(false);
+  else sheet.settle();
   save();
 }
 for (const b of $$('#source-tabs button')) b.addEventListener('click', () => setSource(b.dataset.source as Source));
@@ -357,9 +369,132 @@ $('#pad-clear').addEventListener('click', () => {
 });
 new ResizeObserver(() => state.source === 'hand' && sizePad()).observe(pad);
 
+// Sur la carte
+const sketchLayer = $('#sketch-layer');
+const sketchBar = $('#sketch-bar');
+let sketchPen = true;
+let sketching: { points: LngLat[]; last: Pt } | null = null;
+
+const sketchActive = () => state.step === 'draw' && state.source === 'map';
+
+function renderSketch() {
+  const active = sketchActive();
+  sketchBar.hidden = !active;
+  sketchLayer.hidden = !active || !sketchPen;
+  $('#sketch-pen').setAttribute('aria-pressed', String(sketchPen));
+  $('#sketch-pan').setAttribute('aria-pressed', String(!sketchPen));
+  const count = state.sketch.reduce((n, s) => n + s.length, 0);
+  $<HTMLButtonElement>('#sketch-undo').disabled = !state.sketch.length;
+  $<HTMLButtonElement>('#sketch-clear').disabled = !state.sketch.length;
+  $<HTMLButtonElement>('#sketch-done').disabled = count < 2;
+  if (!mapReady) return;
+  const strokes = active ? [...state.sketch, ...(sketching ? [sketching.points] : [])] : [];
+  setData('sketch', {
+    type: 'FeatureCollection',
+    // Un simple appui laisse un point : on le dessine comme un trait minuscule.
+    features: strokes.map((s) => line(s.length > 1 ? s : [s[0], [s[0][0] + 1e-7, s[0][1]]])),
+  });
+  setData('sketch-links', {
+    type: 'FeatureCollection',
+    features: strokes.slice(1).map((s, i) => line([strokes[i].at(-1)!, s[0]])),
+  });
+}
+
+const unproject = (x: number, y: number) => map.unproject([x, y]).toArray() as LngLat;
+
+sketchLayer.addEventListener('pointerdown', (e) => {
+  if (sketching || !e.isPrimary) return;
+  sketchLayer.setPointerCapture(e.pointerId);
+  // Le point apparaît dès l'appui.
+  sketching = { points: [unproject(e.clientX, e.clientY)], last: [e.clientX, e.clientY] };
+  renderSketch();
+});
+sketchLayer.addEventListener('pointermove', (e) => {
+  if (!sketching || !e.isPrimary) return;
+  for (const ev of e.getCoalescedEvents?.() ?? [e]) {
+    if (Math.hypot(ev.clientX - sketching.last[0], ev.clientY - sketching.last[1]) < 2) continue;
+    sketching.points.push(unproject(ev.clientX, ev.clientY));
+    sketching.last = [ev.clientX, ev.clientY];
+  }
+  renderSketch();
+});
+const endSketchStroke = (e: PointerEvent) => {
+  if (!sketching || !e.isPrimary) return;
+  state.sketch.push(sketching.points);
+  sketching = null;
+  renderSketch();
+  renderPreview();
+  save();
+};
+sketchLayer.addEventListener('pointerup', endSketchStroke);
+sketchLayer.addEventListener('pointercancel', endSketchStroke);
+// La molette zoome aussi en mode crayon, autour du pointeur.
+sketchLayer.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  map.easeTo({ zoom: map.getZoom() - e.deltaY / 400, around: map.unproject([e.clientX, e.clientY]), duration: 0 });
+}, { passive: false });
+
+function setPen(pen: boolean) {
+  sketchPen = pen;
+  renderSketch();
+}
+$('#sketch-pen').addEventListener('click', () => setPen(true));
+$('#sketch-pan').addEventListener('click', () => setPen(false));
+$('#sketch-undo').addEventListener('click', () => {
+  state.sketch.pop();
+  renderSketch();
+  renderPreview();
+  save();
+});
+$('#sketch-clear').addEventListener('click', () => {
+  state.sketch = [];
+  renderSketch();
+  renderPreview();
+  save();
+});
+$('#sketch-done').addEventListener('click', placeOnMap);
+
+/**
+ * Convertit les traits en forme normalisée + placement qui la reproduit
+ * exactement là où elle a été dessinée.
+ */
+function sketchToShape(): { shape: Pt[]; placement: Placement } | null {
+  const all = state.sketch.flat();
+  if (all.length < 2) return null;
+  const ref = all[0];
+  const cos = Math.cos((ref[1] * Math.PI) / 180);
+  // Mètres, x vers l'est et y vers le bas (convention des formes).
+  const local = all.map(([lng, lat]) => [(lng - ref[0]) * 111_320 * cos, -(lat - ref[1]) * 111_320] as Pt);
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const [x, y] of local) {
+    minX = Math.min(minX, x); maxX = Math.max(maxX, x);
+    minY = Math.min(minY, y); maxY = Math.max(maxY, y);
+  }
+  const span = Math.max(maxX - minX, maxY - minY);
+  if (span < 5) return null;
+  const shape = normalize(simplify(local, span * 0.004));
+  const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+  const center: LngLat = [ref[0] + cx / (111_320 * cos), ref[1] - cy / 111_320];
+  return { shape, placement: { center, size: span, rotation: 0 } };
+}
+
 placeBtn.addEventListener('click', placeOnMap);
 
 function placeOnMap() {
+  if (state.source === 'map') {
+    const sketch = sketchToShape();
+    if (!sketch) return;
+    state.shape = sketch.shape;
+    state.placement = sketch.placement;
+    state.route = null;
+    // Le dessin reste exactement où il a été tracé : calage sur les rues
+    // sans alignement automatique (le bouton reste disponible).
+    setStep('place');
+    if (narrow()) sheet.expand(false);
+    fitTo(place(state.shape, state.placement));
+    save();
+    return;
+  }
   const shape = normalize(currentRaw());
   if (shape.length < 2) return;
   state.shape = shape;

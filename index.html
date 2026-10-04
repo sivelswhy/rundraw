@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
     <title>RunDraw – Dessine ta course sur la carte et exporte le GPX (GPS art)</title>
-    <meta name="description" content="Crée ton GPS art : écris un texte, importe une image ou dessine à main levée sur la carte. RunDraw cale le dessin sur les vraies rues et exporte un GPX pour Strava, Garmin, Coros ou Komoot. Gratuit, sans inscription." />
+    <meta name="description" content="Crée ton GPS art : écris un texte, importe une image ou dessine directement sur la carte. RunDraw cale le dessin sur les vraies rues et exporte un GPX pour Strava, Garmin, Coros ou Komoot. Gratuit, sans inscription." />
     <meta name="keywords" content="GPS art, Strava art, dessin GPS, course à pied, running, GPX, itinéraire, parcours dessin, carte, Garmin, Komoot" />
     <meta name="author" content="RunDraw" />
     <meta name="robots" content="index, follow, max-image-preview:large" />
@@ -59,6 +59,7 @@
           "Texte en police à trait continu",
           "Import d'image et détourage automatique",
           "Dessin à main levée",
+          "Dessin directement sur la carte",
           "Calage automatique sur les rues et chemins",
           "Alignement automatique pour un tracé net",
           "Export GPX compatible Strava, Garmin, Coros et Komoot"
@@ -80,6 +81,26 @@
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+    <!-- Dessin direct sur la carte -->
+    <div class="sketch-layer" id="sketch-layer" hidden></div>
+    <div class="sketch-bar glass" id="sketch-bar" role="toolbar" aria-label="Dessin sur la carte" hidden>
+      <div class="sketch-modes">
+        <button type="button" id="sketch-pen" aria-pressed="true">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M13.5 3.5l3 3L7 16H4v-3z" /></svg>Crayon
+        </button>
+        <button type="button" id="sketch-pan" aria-pressed="false">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2v16M2 10h16M10 2 7.5 4.5M10 2l2.5 2.5M10 18l-2.5-2.5M10 18l2.5-2.5M2 10l2.5-2.5M2 10l2.5 2.5M18 10l-2.5-2.5M18 10l-2.5 2.5" /></svg>Déplacer
+        </button>
+      </div>
+      <button type="button" class="icon" id="sketch-undo" aria-label="Annuler le dernier trait">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 5 3 9l4 4" /><path d="M3 9h9a5 5 0 0 1 0 10h-2" /></svg>
+      </button>
+      <button type="button" class="icon" id="sketch-clear" aria-label="Tout effacer">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 6h12M8 6V4h4v2M6 6l1 11h6l1-11" /></svg>
+      </button>
+      <button type="button" class="done" id="sketch-done">Valider</button>
+    </div>
+
     <section class="sheet glass" id="sheet" aria-label="Panneau">
       <header class="sheet-head" id="sheet-head">
         <div class="grabber" aria-hidden="true"></div>
@@ -95,7 +116,8 @@
           <div class="segmented" role="radiogroup" aria-label="Type de dessin" id="source-tabs">
             <button role="radio" data-source="text" aria-checked="true">Texte</button>
             <button role="radio" data-source="image" aria-checked="false">Image</button>
-            <button role="radio" data-source="hand" aria-checked="false">À main levée</button>
+            <button role="radio" data-source="hand" aria-checked="false">Main levée</button>
+            <button role="radio" data-source="map" aria-checked="false">Sur la carte</button>
           </div>
 
           <div data-source-panel="text">
@@ -126,6 +148,11 @@
               <button class="pill" type="button" id="pad-clear">Effacer</button>
             </div>
             <p class="hint">Dessine d'un trait : chaque levé de doigt sera relié au trait suivant.</p>
+          </div>
+
+          <div data-source-panel="map" hidden>
+            <p class="hint lead">Dessine directement sur la carte, au doigt ou à la souris, à l’endroit exact où tu veux courir.</p>
+            <p class="hint">Passe en mode Déplacer pour bouger ou zoomer la carte. Chaque nouveau trait sera relié au précédent.</p>
           </div>
 
           <div class="preview" id="preview" aria-hidden="true">
