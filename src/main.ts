@@ -15,6 +15,7 @@ import {
 } from './geometry';
 import { downloadGpx, routeToGpx, slug } from './gpx';
 import { alignToStreets, prefetch, snapToStreets } from './roads';
+import { appleLightStyle } from './mapStyle';
 import { Sheet } from './sheet';
 import { loadImage, otsu, traceImage } from './trace';
 
@@ -90,7 +91,8 @@ const haptic = (pattern: number | number[]) => navigator.vibrate?.(pattern);
 // ---------------------------------------------------------------- Carte
 
 const darkScheme = matchMedia('(prefers-color-scheme: dark)');
-const styleUrl = () => `https://tiles.openfreemap.org/styles/${darkScheme.matches ? 'dark' : 'positron'}`;
+// Mode clair : notre style façon Apple Plans ; mode sombre : le style sombre d'OpenFreeMap.
+const styleUrl = () => (darkScheme.matches ? 'https://tiles.openfreemap.org/styles/dark' : appleLightStyle());
 
 const map = new maplibregl.Map({
   container: 'map',
