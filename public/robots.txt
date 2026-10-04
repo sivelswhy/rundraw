@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://rundraw.vercel.app/sitemap.xml

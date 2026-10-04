@@ -1,0 +1,18 @@
+{
+  "name": "RunDraw – Dessine ta course sur la carte",
+  "short_name": "RunDraw",
+  "description": "Dessine un texte ou une image sur la carte, calé sur les vraies rues, exporte le GPX et cours ton dessin.",
+  "lang": "fr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f2f2f7",
+  "theme_color": "#ff5a1f",
+  "categories": ["sports", "health", "navigation", "lifestyle"],
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

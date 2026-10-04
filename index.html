@@ -5,10 +5,69 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23ff5a1f'/%3E%3Cpath d='M8 22c3-9 6-12 8-6s5 3 8-6' fill='none' stroke='white' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E" />
-    <title>RunDraw</title>
+    <title>RunDraw – Dessine ta course sur la carte et exporte le GPX (GPS art)</title>
+    <meta name="description" content="Crée ton GPS art : écris un texte, importe une image ou dessine à main levée sur la carte. RunDraw cale le dessin sur les vraies rues et exporte un GPX pour Strava, Garmin, Coros ou Komoot. Gratuit, sans inscription." />
+    <meta name="keywords" content="GPS art, Strava art, dessin GPS, course à pied, running, GPX, itinéraire, parcours dessin, carte, Garmin, Komoot" />
+    <meta name="author" content="RunDraw" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <link rel="canonical" href="https://rundraw.vercel.app/" />
+
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="RunDraw" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="application-name" content="RunDraw" />
+
+    <!-- Aperçus de partage (Open Graph : Facebook, WhatsApp, iMessage, LinkedIn, Slack…) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="RunDraw" />
+    <meta property="og:locale" content="fr_FR" />
+    <meta property="og:url" content="https://rundraw.vercel.app/" />
+    <meta property="og:title" content="RunDraw – Dessine ta course sur la carte" />
+    <meta property="og:description" content="Écris un texte ou importe une image : RunDraw le cale sur les vraies rues et exporte le GPX. Cours ton dessin." />
+    <meta property="og:image" content="https://rundraw.vercel.app/og.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Le mot RUN tracé en orange le long des rues de Barcelone, à côté du titre RunDraw." />
+
+    <!-- Twitter / X -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="RunDraw – Dessine ta course sur la carte" />
+    <meta name="twitter:description" content="Écris un texte ou importe une image : RunDraw le cale sur les vraies rues et exporte le GPX. Cours ton dessin." />
+    <meta name="twitter:image" content="https://rundraw.vercel.app/og.png" />
+    <meta name="twitter:image:alt" content="Le mot RUN tracé en orange le long des rues de Barcelone, à côté du titre RunDraw." />
+
+    <!-- Données structurées pour les moteurs de recherche -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "RunDraw",
+        "url": "https://rundraw.vercel.app/",
+        "description": "Application web gratuite de GPS art : dessine un texte, une image ou un tracé à main levée sur la carte, cale-le automatiquement sur les rues et exporte l'itinéraire en GPX pour courir ton dessin.",
+        "applicationCategory": "SportsApplication",
+        "operatingSystem": "Tous (navigateur web)",
+        "inLanguage": "fr",
+        "isAccessibleForFree": true,
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
+        "image": "https://rundraw.vercel.app/og.png",
+        "screenshot": "https://rundraw.vercel.app/og.png",
+        "featureList": [
+          "Texte en police à trait continu",
+          "Import d'image et détourage automatique",
+          "Dessin à main levée",
+          "Calage automatique sur les rues et chemins",
+          "Alignement automatique pour un tracé net",
+          "Export GPX compatible Strava, Garmin, Coros et Komoot"
+        ]
+      }
+    </script>
   </head>
   <body>
+    <h1 class="sr-only">RunDraw – GPS art : dessine ta course sur la carte et exporte le GPX</h1>
     <div id="map" aria-label="Carte"></div>
 
     <form class="search glass" id="search" role="search">
