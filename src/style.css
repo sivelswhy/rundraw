@@ -133,7 +133,7 @@ button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
   overflow-y: auto;
   overscroll-behavior: contain;
   touch-action: pan-y;
-  padding: 0 var(--gutter) calc(env(safe-area-inset-bottom) + 1.25rem);
+  padding: 0.75rem var(--gutter) calc(env(safe-area-inset-bottom) + 1.25rem);
   /* Fondu au bord plutôt qu'un filet. */
   mask-image: linear-gradient(to bottom, transparent 0, #000 0.75rem);
 }
